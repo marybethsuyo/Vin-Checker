@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VIN Checker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px; }
+.container { max-width: 1000px; margin: auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+input, button { width: 100%; padding: 12px; margin-top: 10px; font-size: 16px; }
+button { background: #0d6efd; color: #fff; border: none; cursor: pointer; }
+.section { margin-top: 25px; }
+.error { color: red; }
+.highlight { background: #eef3ff; padding: 15px; border-radius: 6px; margin-top: 20px; }
+.fuel-badge { padding: 4px 10px; border-radius: 12px; font-size: 13px; color: #fff; }
+.gasoline { background: #0d6efd; }
+.diesel { background: #343a40; }
+.electric { background: #198754; }
+.hybrid { background: #6f42c1; }
+.other { background: #6c757d; }
+.info-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+.info-table td { vertical-align: top; padding: 6px 12px; }
+.airbags { margin-top: 10px; }
+.airbags ul { list-style: disc; padding-left: 20px; }
+.recall-card { border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 15px; background: #fafafa; }
+
+/* NEW SECTION STYLES */
+.manufacturer-links {
+  margin-top: 40px;
+  padding-top: 25px;
+  border-top: 2px solid #e0e0e0;
+}
+.manufacturer-links h2 {
+  margin-bottom: 15px;
+}
+.manufacturer-links ul {
+  list-style: none;
+  padding-left: 0;
+}
+.manufacturer-links li {
+  margin-bottom: 8px;
+}
+.manufacturer-links a {
+  text-decoration: none;
+  color: #0d6efd;
+  font-weight: bold;
+}
+.manufacturer-links a:hover {
+  text-decoration: underline;
+}
+.footer-credit {
+  margin-top: 30px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>VIN Checker</h1>
+
+<input id="vinInput" placeholder="Enter 17-character VIN" />
+<button onclick="decodeVIN()">Decode VIN</button>
+
+<div id="vehicleInfo" class="section"></div>
+<div id="recallInfo" class="section"></div>
+
+<!-- ✅ NEW SECTION ADDED BELOW EXISTING CONTENT -->
+<div class="manufacturer-links">
+  <h2>Manufacturer Recall Lookup Links</h2>
+  <ul>
+    <li><a href="https://web.audiusa.com/recall/#" target="_blank">AUDI</a></li>
+    <li><a href="https://www.mbusa.com/en/recall" target="_blank">MERCEDES-BENZ</a></li>
+    <li><a href="https://www.jaguarusa.com/ownership/vin-recall.html" target="_blank">JAGUAR</a></li>
+    <li><a href="https://owners.honda.com/service-maintenance/recalls" target="_blank">HONDA</a></li>
+    <li><a href="https://help.ford.com/recall/" target="_blank">FORD</a></li>
+    <li><a href="https://owners.kia.com/content/owners/en/recalls.html/" target="_blank">KIA</a></li>
+    <li><a href="https://www.subaru.com/vehicle-recalls.html" target="_blank">SUBARU</a></li>
+    <li><a href="https://my.gm.com/recalls" target="_blank">GENERAL MOTORS (GM)</a></li>
+    <li><a href="https://www.mopar.com/en-ca/my-vehicle/recalls/search.html" target="_blank">CDJR (CHRYSLER / DODGE / JEEP / RAM)</a></li>
+    <li><a href="https://www.vw.com/en/recalls.html" target="_blank">VOLKSWAGEN</a></li>
+    <li><a href="https://www.toyota.com/recall" target="_blank">TOYOTA</a></li>
+    <li><a href="https://www.mazdausa.com/owners/recalls" target="_blank">MAZDA</a></li>
+    <li><a href="https://www.landroverusa.com/ownership/vin-recall.html" target="_blank">LAND ROVER</a></li>
+    <li><a href="https://autoservice.hyundaiusa.com/campaignhome" target="_blank">HYUNDAI</a></li>
+    <li><a href="https://recall.porsche.com/prod/pag/vinrecalllookup_V3.nsf/VIN?ReadForm&c=usa" target="_blank">PORSCHE</a></li>
+    <li><a href="https://www.nissanusa.com/recalls-vin.html" target="_blank">NISSAN</a></li>
+    <li><a href="https://my.bmwusa.com/safety-and-emission-recalls" target="_blank">BMW</a></li>
+    <li><a href="https://www.lincoln.com/support/recalls/" target="_blank">LINCOLN</a></li>
+    <li><a href="https://www.nhtsa.gov/recalls" target="_blank">NHTSA (ALL MANUFACTURERS)</a></li>
+  </ul>
+
+  <div class="footer-credit">
+    by Mary Beth Tato- Suyo
+  </div>
+</div>
+
+</div>
+
+<script>
+async function decodeVIN() {
+  const vin = document.getElementById("vinInput").value.trim().toUpperCase();
+  const vehicleDiv = document.getElementById("vehicleInfo");
+  const recallDiv = document.getElementById("recallInfo");
+
+  vehicleDiv.innerHTML = "Loading vehicle data...";
+  recallDiv.innerHTML = "Loading recall information...";
+
+  if(vin.length!==17){ 
+    vehicleDiv.innerHTML="<p class='error'>VIN must be exactly 17 characters.</p>"; 
+    recallDiv.innerHTML=""; 
+    return; 
+  }
+
+  try {
+    const vinRes = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${vin}?format=json`);
+    const vinData = await vinRes.json();
+
+    const wanted = {
+      "Model Year": "year", "Make": "make", "Model": "model", "Manufacturer Name": "manufacturer",
+      "Body Class": "Body Class", "Series": "Series", "Gross Vehicle Weight Rating": "GVWR",
+      "Trim": "Trim", "Drive Type": "Drive Type", "Cylinders": "Cylinders",
+      "Fuel Type - Primary": "Primary Fuel Type", "Fuel Type - Secondary": "Secondary Fuel Type",
+      "Engine Displacement (L)": "Engine Displacement", "Engine Model": "Engine Model",
+      "Engine Manufacturer": "Engine Manufacturer", "Engine Brake (HP)": "Engine Brake",
+      "Electrification Level": "Electrification Level", "Cab Type": "Cab Type",
+      "Transmission Speeds": "Transmission Speed", "Transmission Style": "Transmission Style",
+      "Air Bag Loc Front": "Front", "Air Bag Loc Knee": "Knee", "Air Bag Loc Side": "Side",
+      "Air Bag Loc Curtain": "Curtain", "Air Bag Loc Seat Cushion": "Seat Cushion",
+      "Other Restraint System Info": "Other Restraint Info", "Plant City": "Plant"
+    };
+
+    let result = {};
+    vinData.Results.forEach(r => { if(wanted[r.Variable] && r.Value) result[wanted[r.Variable]] = r.Value; });
+
+    const year = result.year || "Unknown Year";
+    const make = result.make || "Unknown Make";
+    const model = result.model || "Unknown Model";
+
+    function getFuelBadgeClass(fuel) {
+      if(!fuel) return "other";
+      fuel = fuel.toLowerCase();
+      if(fuel.includes("gas")) return "gasoline";
+      if(fuel.includes("diesel")) return "diesel";
+      if(fuel.includes("electric")) return "electric";
+      if(fuel.includes("hybrid")) return "hybrid";
+      return "other";
+    }
+
+    const primaryFuelClass = getFuelBadgeClass(result["Primary Fuel Type"]);
+    const secondaryFuelClass = getFuelBadgeClass(result["Secondary Fuel Type"]);
+
+    let html = `<div class="highlight">
+      <h2>${year} ${make} ${model}</h2>
+      <p><strong>Manufacturer:</strong> ${result.manufacturer||"N/A"}</p>
+    </div>
+    <h3>Other Information</h3>
+    <table class="info-table">
+      <tr><td><strong>Series:</strong> ${result.Series||"N/A"}</td>
+          <td><strong>Trim:</strong> ${result.Trim||"N/A"}</td></tr>
+      <tr><td><strong>Gross Vehicle Weight Rating:</strong> ${result.GVWR||"N/A"}</td>
+          <td><strong>Drive Type:</strong> ${result["Drive Type"]||"N/A"}</td></tr>
+      <tr><td><strong>Cylinders:</strong> ${result.Cylinders||"N/A"}</td>
+          <td><strong>Primary Fuel Type:</strong> <span class="fuel-badge ${primaryFuelClass}">${result["Primary Fuel Type"]||"N/A"}</span></td></tr>
+      <tr><td><strong>Secondary Fuel Type:</strong> <span class="fuel-badge ${secondaryFuelClass}">${result["Secondary Fuel Type"]||"N/A"}</span></td>
+          <td><strong>Electrification Level:</strong> ${result["Electrification Level"]||"N/A"}</td></tr>
+      <tr><td><strong>Engine Model:</strong> ${result["Engine Model"]||"N/A"}</td>
+          <td><strong>Engine Manufacturer:</strong> ${result["Engine Manufacturer"]||"N/A"}</td></tr>
+      <tr><td><strong>Engine Displacement (L):</strong> ${result["Engine Displacement"]||"N/A"}</td>
+          <td><strong>Engine Brake (HP):</strong> ${result["Engine Brake"]||"N/A"}</td></tr>
+      <tr><td><strong>Transmission Speed:</strong> ${result["Transmission Speed"]||"N/A"}</td>
+          <td><strong>Transmission Style:</strong> ${result["Transmission Style"]||"N/A"}</td></tr>
+      <tr><td><strong>Cab Type:</strong> ${result["Cab Type"]||"N/A"}</td>
+          <td><strong>Plant:</strong> ${result["Plant"]||"N/A"}</td></tr>
+    </table>
+    <div class="airbags">
+      <h4>Airbags:</h4>
+      <ul>
+        <li><strong>Front:</strong> ${result.Front||""}</li>
+        <li><strong>Knee:</strong> ${result.Knee||""}</li>
+        <li><strong>Side:</strong> ${result.Side||""}</li>
+        <li><strong>Curtain:</strong> ${result.Curtain||""}</li>
+        <li><strong>Seat Cushion:</strong> ${result["Seat Cushion"]||""}</li>
+        <li><strong>Other Restraint Info:</strong> ${result["Other Restraint Info"]||""}</li>
+      </ul>
+    </div>`;
+    vehicleDiv.innerHTML=html;
+
+    const recallRes = await fetch(`https://api.nhtsa.gov/recalls/recallsByVin?vin=${vin}`);
+    const recallData = await recallRes.json();
+    let recallHTML = "<h2>Recall Information</h2>";
+
+    if(!recallData.results || recallData.results.length===0){
+      recallHTML+="<p>No recalls found for this VIN.</p>";
+    } else {
+      recallData.results.forEach(r=>{
+        recallHTML+=`
+          <div class="recall-card">
+            <h4>Manufacturer Recall #: ${r.ManufacturerRecallNumber||"N/A"}</h4>
+            <p><strong>NHTSA Campaign #:</strong> ${r.NHTSACampaignNumber}</p>
+            <p><strong>Summary:</strong> ${r.Summary}</p>
+            <p><strong>Remedy:</strong> ${r.Remedy||"Contact manufacturer for details."}</p>
+            <p><strong>Report Date:</strong> ${r.ReportReceivedDate}</p>
+          </div>
+        `;
+      });
+    }
+    recallDiv.innerHTML=recallHTML;
+
+  } catch(e){
+    vehicleDiv.innerHTML="<p class='error'>Error loading VIN data.</p>";
+    recallDiv.innerHTML="<p class='error'>Error loading recall data.</p>";
+  }
+}
+</script>
+</body>
+</html>
